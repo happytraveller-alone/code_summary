@@ -1,0 +1,81 @@
+Suppose you're an RFC documentation expert and now you're dealing with functions that aren't labeled with their corresponding RFCs, for example:
+#################################################
+// C Code:
+static int h1_post_read_request(request_rec *r)
+{
+    const char *tenc;
+
+    if (!r->main && !r->prev && r->proto_num <= HTTP_VERSION(1,1)) {
+        if (r->proto_num >= HTTP_VERSION(1,0)) {
+            tenc = apr_table_get(r->headers_in, "Transfer-Encoding");
+            if (tenc) {
+                r->body_indeterminate = 1;
+                if (!ap_is_chunked(r->pool, tenc)) {
+                    ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(02539)
+                                  "client sent unknown Transfer-Encoding "
+                                  "(%s): %s", tenc, r->uri);
+                    return HTTP_BAD_REQUEST;
+                }
+
+                if (apr_table_get(r->headers_in, "Content-Length")) {
+                    apr_table_unset(r->headers_in, "Content-Length");
+                    r->connection->keepalive = AP_CONN_CLOSE;
+                }
+            }
+        }
+        ap_add_input_filter_handle(ap_h1_body_in_filter_handle,
+                                   NULL, r, r->connection);
+    }
+    return OK;
+}
+#################################################
+
+Now all you need to do is comment this code with the corresponding RFC documentation and return, as follows:
+#################################################
+static int h1_post_read_request(request_rec *r)
+{
+    const char *tenc;
+
+    if (!r->main && !r->prev && r->proto_num <= HTTP_VERSION(1,1)) {
+        if (r->proto_num >= HTTP_VERSION(1,0)) {
+            tenc = apr_table_get(r->headers_in, "Transfer-Encoding");
+            if (tenc) {
+                r->body_indeterminate = 1;
+
+                /* https://tools.ietf.org/html/rfc7230 
+                 * Section 3.3.3.3: "If a Transfer-Encoding header field is
+                 * present in a request and the chunked transfer coding is not
+                 * the final encoding ...; the server MUST respond with the 400
+                 * (Bad Request) status code and then close the connection".
+                 */
+                if (!ap_is_chunked(r->pool, tenc)) {
+                    ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, APLOGNO(02539)
+                                  "client sent unknown Transfer-Encoding "
+                                  "(%s): %s", tenc, r->uri);
+                    return HTTP_BAD_REQUEST;
+                }
+
+                /* https://tools.ietf.org/html/rfc7230 
+                 * Section 3.3.3.3: "If a message is received with both a
+                 * Transfer-Encoding and a Content-Length header field, the
+                 * Transfer-Encoding overrides the Content-Length. ... A sender
+                 * MUST remove the received Content-Length field".
+                 */
+                if (apr_table_get(r->headers_in, "Content-Length")) {
+                    apr_table_unset(r->headers_in, "Content-Length");
+
+                    /* Don't reuse this connection anyway to avoid confusion with
+                     * intermediaries and request/reponse spltting.
+                     */
+                    r->connection->keepalive = AP_CONN_CLOSE;
+                }
+            }
+        }
+        /* HTTP1_BODY_IN takes care of chunked encoding and content-length.
+         */
+        ap_add_input_filter_handle(ap_h1_body_in_filter_handle,
+                                   NULL, r, r->connection);
+    }
+    return OK;
+}
+#################################################

@@ -1,0 +1,86 @@
+//----- (0000000180001010) ----------------------------------------------------
+int __fastcall dynamic_initializer_for__g_cCipherMill__(CCipherMill *a1)
+{
+  CCipherMill::CCipherMill(a1);
+  return atexit(dynamic_atexit_destructor_for__g_cCipherMill__);
+}
+
+//----- (0000000180001040) ----------------------------------------------------
+int __fastcall dynamic_initializer_for__g_SslContextManager__(CSslContextManager *a1)
+{
+  CSslContextManager::CSslContextManager(a1);
+  return atexit(dynamic_atexit_destructor_for__g_SslContextManager__);
+}
+
+//----- (0000000180001060) ----------------------------------------------------
+__int64 __fastcall CSslContext::MakeSessionKeys(CSslContext *this, __int64 a2)
+{
+  _QWORD *v2; // rsi
+  __int64 v5; // rcx
+  __int64 v6; // rcx
+  __int64 v7; // rax
+  __int64 v8; // rax
+  int v9; // eax
+  unsigned int v10; // ebp
+  __int64 *v11; // rax
+  __int64 v12; // rcx
+  int SessionKeys; // eax
+  unsigned int v14; // edi
+  int v16; // [rsp+40h] [rbp-88h] BYREF
+  int v17[2]; // [rsp+48h] [rbp-80h] BYREF
+  char *v18; // [rsp+50h] [rbp-78h]
+  char v19; // [rsp+60h] [rbp-68h] BYREF
+
+  v16 = 0;
+  v2 = (_QWORD *)((char *)this + 160);
+  v5 = *((_QWORD *)this + 20);
+  if ( v5 )
+  {
+    SslFreeObject(v5, 0i64);
+    *v2 = 0i64;
+  }
+  v6 = *((_QWORD *)this + 21);
+  if ( v6 )
+  {
+    SslFreeObject(v6, 0i64);
+    *((_QWORD *)this + 21) = 0i64;
+  }
+  if ( (*((_BYTE *)this + 32) & 1) == 0 )
+    return 0i64;
+  v7 = *((_QWORD *)this + 1);
+  if ( !v7 || !*(_DWORD *)(v7 + 28) )
+    return 0i64;
+  v17[0] = 0;
+  v18 = &v19;
+  v8 = *(_QWORD *)this;
+  v17[1] = 4;
+  v9 = (*(__int64 (__fastcall **)(CSslContext *, _QWORD, int *, int *, _QWORD, _QWORD))(v8 + 128))(
+         this,
+         0i64,
+         &v16,
+         v17,
+         0i64,
+         0i64);
+  v10 = v9;
+  if ( v9 )
+  {
+    CSslContext::SetErrorAndFatalAlert((__int64)this, 601, v9, 0x33u);
+    return v10;
+  }
+  else
+  {
+    v11 = (__int64 *)*((_QWORD *)this + 1);
+    if ( v11 )
+      v12 = *v11;
+    else
+      v12 = 0i64;
+    SessionKeys = SslGenerateSessionKeys(v12, a2, v2, (char *)this + 168, v17, 0);
+    v14 = SessionKeys;
+    if ( !SessionKeys )
+      return 0i64;
+    CSslContext::SetErrorAndFatalAlert((__int64)this, 600, SessionKeys, 0x33u);
+    return v14;
+  }
+}
+// 180098428: using guessed type __int64 __fastcall SslGenerateSessionKeys(_QWORD, _QWORD, _QWORD, _QWORD, _QWORD, _DWORD);
+// 180098570: using guessed type __int64 __fastcall SslFreeObject(_QWORD, _QWORD);
