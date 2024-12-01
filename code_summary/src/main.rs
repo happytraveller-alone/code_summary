@@ -57,6 +57,7 @@ fn run() -> io::Result<()> {
         "Failed to prepare output directory",
     )?;
     let sub_output_dir = Path::new(&sub_output_dir);
+
     let sub_code_dir = wrap_error(
         prepare_output_directory(input_path, code_dir),
         "Failed to prepare code directory",
@@ -76,7 +77,7 @@ fn run() -> io::Result<()> {
     let end_time = Instant::now();
     let duration = end_time.duration_since(start_time);
     println!(
-        "处理完成，总处理时间: {}ms，共生成 {} 个文件",
+        "FINISHED, totoal processing time: {}ms, generate {} files in total",
         duration.as_millis(),
         file_count
     );
@@ -84,7 +85,7 @@ fn run() -> io::Result<()> {
     if is_default {
         println!("\nThe program is currently using the default parameter.");
         println!("If you want to process your own file, please specify the file name.");
-        println!("Usage: cargo run <filename>");
+        println!("Usage: cargo run <filename in input folder>");
         println!("Example: cargo run schannel.txt");
     }
 

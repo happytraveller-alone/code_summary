@@ -72,46 +72,13 @@ pub fn process_file(
 }
 
 pub fn process_buffer(
-    output_dir: &Path,
+    _output_dir: &Path,
     code_dir: &Path,
     lines_buffer: &[String],
     file_count: usize,
-    line_count: usize,
+    _line_count: usize,
 ) -> io::Result<()> {
-    let function_name = if lines_buffer.len() >= 2 {
-        sanitize_filename(&extract_function_name(&lines_buffer[1]))
-    } else {
-        format!("unknown_{:04}", file_count)
-    };
 
-    let function_dir = output_dir.join(&function_name);
-
-    let prompt_path = function_dir.join("prompt.txt");
-    let code_path = function_dir.join("code.txt");
-
-    wrap_error(
-        process_single_file(
-            &function_dir,
-            &prompt_path,
-            lines_buffer,
-            file_count,
-            line_count,
-            "prompt",
-        ),
-        "Failed to process prompt file",
-    )?;
-
-    wrap_error(
-        process_single_file(
-            &function_dir,
-            &code_path,
-            lines_buffer,
-            file_count,
-            line_count,
-            "code",
-        ),
-        "Failed to process code file",
-    )?;
 
     wrap_error(
         process_code_slice_file(&code_dir, lines_buffer, file_count),
@@ -121,44 +88,9 @@ pub fn process_buffer(
     Ok(())
 }
 
-pub fn process_single_file(
-    function_dir: &Path,
-    file_path: &Path,
-    lines_buffer: &[String],
-    file_count: usize,
-    line_count: usize,
-    file_type: &str,
-) -> io::Result<()> {
-    let result = if file_type == "prompt" {
-        process_single_prompt_file(
-            function_dir,
-            file_path,
-            lines_buffer,
-            file_count,
-            line_count,
-        )
-    } else {
-        process_single_code_file(
-            function_dir,
-            file_path,
-            lines_buffer,
-            file_count,
-            line_count,
-        )
-    };
 
-    wrap_error(
-        result,
-        &format!("Error processing {} file id-{:04}", file_type, file_count),
-    )?;
-    print_message(
-        &format!("Processed {} file id-{:04}", file_type, file_count),
-        OutputLevel::Debug,
-    );
-    Ok(())
-}
 
-pub fn prepare_new_function_dir(output_dir: &Path, lines_buffer: &[String]) -> io::Result<String> {
+pub fn prepare_new_function_dir(_output_dir: &Path, lines_buffer: &[String]) -> io::Result<String> {
     let function_name = if lines_buffer.len() >= 2 {
         print_message(
             &format!("line message: {}", &lines_buffer[1]),
@@ -169,22 +101,7 @@ pub fn prepare_new_function_dir(output_dir: &Path, lines_buffer: &[String]) -> i
         String::from("unknown")
     };
 
-    let function_dir = output_dir.join(&function_name);
-    print_message(
-        &format!("function_dir info: {:?}", function_dir.display()),
-        OutputLevel::Debug,
-    );
-    wrap_error(
-        fs::create_dir_all(&function_dir),
-        &format!("Failed to create function directory {:?}", function_dir),
-    )?;
-    wrap_error(
-        create_empty_files(&function_dir),
-        &format!(
-            "Failed to create empty files in directory {:?}",
-            function_dir
-        ),
-    )?;
+
     Ok(function_name)
 }
 
@@ -242,63 +159,6 @@ pub fn process_code_slice_file(
     Ok(())
 }
 
-pub fn process_single_prompt_file(
-    _function_dir: &Path,
-    prompt_path: &Path,
-    lines_buffer: &[String],
-    file_count: usize,
-    line_count: usize,
-) -> io::Result<()> {
-    let mut file = wrap_error(
-        OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .open(prompt_path),
-        &format!("Failed to open prompt file {:?}", prompt_path),
-    )?;
-
-    wrap_error(
-        update_file_header(&mut file, file_count, line_count),
-        "Failed to update file header",
-    )?;
-    wrap_error(
-        write_buffered_lines(&mut file, lines_buffer, false),
-        "Failed to write buffered lines",
-    )?;
-    wrap_error(append_custom_content(&mut file), "Failed to append content")?;
-
-    wrap_error(file.flush(), "Failed to flush prompt file")?;
-
-    Ok(())
-}
-
-pub fn process_single_code_file(
-    _function_dir: &Path,
-    code_path: &Path,
-    lines_buffer: &[String],
-    _file_count: usize,
-    _line_count: usize,
-) -> io::Result<()> {
-    let mut file = wrap_error(
-        OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .open(code_path),
-        &format!("Failed to open code file {:?}", code_path),
-    )?;
-
-    wrap_error(
-        write_buffered_lines(&mut file, lines_buffer, false),
-        "Failed to write buffered lines",
-    )?;
-    wrap_error(file.flush(), "Failed to flush code file")?;
-
-    Ok(())
-}
 
 pub fn write_buffered_lines(file: &mut File, lines: &[String], json_format: bool) -> io::Result<()> {
     let mut non_empty_lines = lines
@@ -331,3 +191,152 @@ pub fn write_function_list(output_dir: &Path, function_names: &[String]) -> io::
 
     Ok(())
 }
+
+
+    // let function_name = if lines_buffer.len() >= 2 {
+    //     sanitize_filename(&extract_function_name(&lines_buffer[1]))
+    // } else {
+    //     format!("unknown_{:04}", file_count)
+    // };
+
+    // let function_dir = output_dir.join(&function_name);
+
+    // let prompt_path = function_dir.join("prompt.txt");
+    // let code_path = function_dir.join("code.txt");
+
+    // wrap_error(
+    //     process_single_file(
+    //         &function_dir,
+    //         &prompt_path,
+    //         lines_buffer,
+    //         file_count,
+    //         line_count,
+    //         "prompt",
+    //     ),
+    //     "Failed to process prompt file",
+    // )?;
+
+    // wrap_error(
+    //     process_single_file(
+    //         &function_dir,
+    //         &code_path,
+    //         lines_buffer,
+    //         file_count,
+    //         line_count,
+    //         "code",
+    //     ),
+    //     "Failed to process code file",
+    // )?;
+
+
+// pub fn process_single_prompt_file(
+//     _function_dir: &Path,
+//     prompt_path: &Path,
+//     lines_buffer: &[String],
+//     file_count: usize,
+//     line_count: usize,
+// ) -> io::Result<()> {
+//     let mut file = wrap_error(
+//         OpenOptions::new()
+//             .read(true)
+//             .write(true)
+//             .create(true)
+//             .truncate(true)
+//             .open(prompt_path),
+//         &format!("Failed to open prompt file {:?}", prompt_path),
+//     )?;
+
+//     wrap_error(
+//         update_file_header(&mut file, file_count, line_count),
+//         "Failed to update file header",
+//     )?;
+//     wrap_error(
+//         write_buffered_lines(&mut file, lines_buffer, false),
+//         "Failed to write buffered lines",
+//     )?;
+//     wrap_error(append_custom_content(&mut file), "Failed to append content")?;
+
+//     wrap_error(file.flush(), "Failed to flush prompt file")?;
+
+//     Ok(())
+// }
+
+// pub fn process_single_code_file(
+//     _function_dir: &Path,
+//     code_path: &Path,
+//     lines_buffer: &[String],
+//     _file_count: usize,
+//     _line_count: usize,
+// ) -> io::Result<()> {
+//     let mut file = wrap_error(
+//         OpenOptions::new()
+//             .read(true)
+//             .write(true)
+//             .create(true)
+//             .truncate(true)
+//             .open(code_path),
+//         &format!("Failed to open code file {:?}", code_path),
+//     )?;
+
+//     wrap_error(
+//         write_buffered_lines(&mut file, lines_buffer, false),
+//         "Failed to write buffered lines",
+//     )?;
+//     wrap_error(file.flush(), "Failed to flush code file")?;
+
+//     Ok(())
+// }
+
+    // let function_dir = output_dir.join(&function_name);
+    // print_message(
+    //     &format!("function_dir info: {:?}", function_dir.display()),
+    //     OutputLevel::Debug,
+    // );
+    // wrap_error(
+    //     fs::create_dir_all(&function_dir),
+    //     &format!("Failed to create function directory {:?}", function_dir),
+    // )?;
+    // wrap_error(
+    //     create_empty_files(&function_dir),
+    //     &format!(
+    //         "Failed to create empty files in directory {:?}",
+    //         function_dir
+    //     ),
+    // )?;
+
+    // pub fn process_single_file(
+//     function_dir: &Path,
+//     file_path: &Path,
+//     lines_buffer: &[String],
+//     file_count: usize,
+//     line_count: usize,
+//     file_type: &str,
+// ) -> io::Result<()> {
+//     let result = if file_type == "prompt" {
+//         process_single_prompt_file(
+//             function_dir,
+//             file_path,
+//             lines_buffer,
+//             file_count,
+//             line_count,
+//         )
+//     } else {
+//         process_single_code_file(
+//             function_dir,
+//             file_path,
+//             lines_buffer,
+//             file_count,
+//             line_count,
+//         )
+//     };
+
+//     wrap_error(
+//         result,
+//         &format!("Error processing {} file id-{:04}", file_type, file_count),
+//     )?;
+//     print_message(
+//         &format!("Processed {} file id-{:04}", file_type, file_count),
+//         OutputLevel::Debug,
+//     );
+//     Ok(())
+// }
