@@ -1,10 +1,23 @@
-use std::path::{Path, PathBuf, MAIN_SEPARATOR};
+use regex::Regex;
 use std::fs;
 use std::io;
-use regex::Regex;
+use std::path::{Path, PathBuf, MAIN_SEPARATOR};
 
-use crate::error::wrap_error;
-use crate::output::{print_message, OutputLevel};
+// use crate::output::{print_message, OutputLevel};
+#[derive(PartialEq, PartialOrd, Debug)]
+pub enum OutputLevel {
+    Debug,
+    Warn,
+    Info,
+}
+
+pub const CURRENT_OUTPUT_LEVEL: OutputLevel = OutputLevel::Warn;
+
+pub fn print_message(message: &str, level: OutputLevel) {
+    if level >= CURRENT_OUTPUT_LEVEL {
+        println!("{}", message);
+    }
+}
 
 pub fn extract_function_name(declaration: &str) -> String {
     let re = Regex::new(r"\s((?:[^`\s(]+(?:`[^']*')?)+)(?:\s*\(|\s*$)").unwrap();
@@ -81,28 +94,101 @@ pub fn prepare_output_directory(input_path: &Path, output_dir: &str) -> io::Resu
     Ok(sub_output_dir.to_string_lossy().into_owned())
 }
 
+pub fn wrap_error<T>(result: io::Result<T>, context: &str) -> io::Result<T> {
+    result.map_err(|e| {
+        let error_message = format!("{}: {}", context, e);
+        print_error(&error_message);
+        io::Error::new(io::ErrorKind::Other, error_message)
+    })
+}
+
+pub fn print_error(message: &str) {
+    const RED: &str = "\x1b[31m";
+    const RESET: &str = "\x1b[0m";
+    eprintln!("{}Error: {}{}", RED, message, RESET);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn test_output_level_ordering() {
+        assert!(OutputLevel::Debug < OutputLevel::Info);
+        assert!(OutputLevel::Info > OutputLevel::Debug);
+        assert_eq!(OutputLevel::Info <= CURRENT_OUTPUT_LEVEL, true);
+    }
+
+    #[test]
+    fn test_output_level_equality() {
+        assert_eq!(OutputLevel::Info, OutputLevel::Info);
+        assert_ne!(OutputLevel::Info, OutputLevel::Debug);
+        assert_ne!(OutputLevel::Warn, OutputLevel::Debug);
+    }
 
     #[test]
     fn test_extract_function_name() {
-        assert_eq!(extract_function_name("void test_function(int a)"), "test_function");
-        assert_eq!(extract_function_name("int complex_function_name(char* b, int c)"), "complex_function_name");
-        assert_eq!(extract_function_name("struct Result* get_result()"), "get_result");
-        assert_eq!(extract_function_name("__int64 __fastcall CSslContext::MakeSessionKeys(CSslContext *this, __int64 a2)"),"CSslContext::MakeSessionKeys");
+        assert_eq!(
+            extract_function_name("void test_function(int a)"),
+            "test_function"
+        );
+        assert_eq!(
+            extract_function_name("int complex_function_name(char* b, int c)"),
+            "complex_function_name"
+        );
+        assert_eq!(
+            extract_function_name("struct Result* get_result()"),
+            "get_result"
+        );
+        assert_eq!(
+            extract_function_name(
+                "__int64 __fastcall CSslContext::MakeSessionKeys(CSslContext *this, __int64 a2)"
+            ),
+            "CSslContext::MakeSessionKeys"
+        );
         assert_eq!(extract_function_name("CSessionCacheClientItem *__fastcall CSessionCacheClientItem::`vector deleting destructor'()"),"CSessionCacheClientItem::`vector deleting destructor'");
     }
 
     #[test]
     fn test_sanitize_filename() {
         assert_eq!(sanitize_filename("normal_filename"), "normal_filename");
-        assert_eq!(sanitize_filename("file:name?with*invalid<chars>"), "file_name_with_invalid_chars");
-        assert_eq!(sanitize_filename("CSslContext::MakeSessionKeys"),"CSslContext__MakeSessionKeys");
-        assert_eq!(sanitize_filename("__leading_underscores__"), "leading_underscores");
-        assert_eq!(sanitize_filename("trailing_underscores__"), "trailing_underscores");
-        assert_eq!(sanitize_filename("file/name\\with/backslashes"), "file_name_with_backslashes");
+        assert_eq!(
+            sanitize_filename("file:name?with*invalid<chars>"),
+            "file_name_with_invalid_chars"
+        );
+        assert_eq!(
+            sanitize_filename("CSslContext::MakeSessionKeys"),
+            "CSslContext__MakeSessionKeys"
+        );
+        assert_eq!(
+            sanitize_filename("__leading_underscores__"),
+            "leading_underscores"
+        );
+        assert_eq!(
+            sanitize_filename("trailing_underscores__"),
+            "trailing_underscores"
+        );
+        assert_eq!(
+            sanitize_filename("file/name\\with/backslashes"),
+            "file_name_with_backslashes"
+        );
     }
 
+    #[test]
+    fn test_wrap_error_success() {
+        let result: io::Result<i32> = Ok(42);
+        let wrapped = wrap_error(result, "Test context");
+        assert_eq!(wrapped.unwrap(), 42);
+    }
 
+    #[test]
+    fn test_wrap_error_failure() {
+        let error = io::Error::new(io::ErrorKind::NotFound, "Original error");
+        let result: io::Result<i32> = Err(error);
+        let wrapped = wrap_error(result, "Test context");
+
+        assert!(wrapped.is_err());
+        let err = wrapped.unwrap_err();
+        assert_eq!(err.kind(), io::ErrorKind::Other);
+        assert_eq!(err.to_string(), "Test context: Original error");
+    }
 }

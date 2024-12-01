@@ -1,15 +1,12 @@
-use std::env;
-use std::path::Path;
-use std::io::{self, ErrorKind};
-use std::time::Instant;
 use regex::Regex;
+use std::env;
+use std::io::{self, ErrorKind};
+use std::path::Path;
+use std::time::Instant;
 
-mod error;
 mod file_processing;
-mod output;
 mod utils;
 
-use error::*;
 use file_processing::*;
 use utils::*;
 
@@ -83,9 +80,18 @@ fn run() -> io::Result<()> {
     );
 
     if is_default {
-        println!("\nThe program is currently using the default parameter.");
-        println!("If you want to process your own file, please specify the file name.");
-        println!("Usage: cargo run <filename in input folder>");
+        print_message(
+            "\nThe program is currently using the default parameter.",
+            OutputLevel::Warn,
+        );
+        print_message(
+            "If you want to process your own file, please specify the file name.",
+            OutputLevel::Warn,
+        );
+        print_message(
+            "Usage: cargo run <filename in input folder>",
+            OutputLevel::Warn,
+        );
         println!("Example: cargo run schannel.txt");
     }
 
