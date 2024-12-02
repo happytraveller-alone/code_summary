@@ -133,7 +133,7 @@ pub fn process_code_slice_file(
     if lines_buffer.len() >= 2 {
         let function_declaration = &lines_buffer[1];
         let function_name = sanitize_filename(&extract_function_name(function_declaration));
-
+        let function_name = function_name.chars().take(30).collect::<String>();
         if !function_name.is_empty() {
             let new_file_name = format!("{}.txt", function_name);
             let new_code_slice_path = code_dir.join(&new_file_name);
